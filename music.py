@@ -1,0 +1,123 @@
+import os
+import re
+import uuid
+import asyncio
+from aiogram import Bot, Dispatcher, Router, types, F
+from aiogram.filters import Command
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, FSInputFile, CallbackQuery
+import yt_dlp
+
+API_TOKEN = '7778413375:AAHX7zqBmRVh-ihK0tX580JJtNDRuV5UMMo'
+
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher()
+router = Router()
+
+def sanitize_filename(name: str) -> str:
+    """Удаляем запрещённые символы из имени файла"""
+    return re.sub(r'[\\/*?:"<>|]', '', name)
+
+async def search_tracks(query: str) -> list:
+    """Ищем видео на YouTube по запросу, возвращаем до 10 результатов"""
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'skip_download': True,
+        'extract_flat': 'in_playlist',  # Чтобы не скачивать страницы
+        'outtmpl': '%(title)s.%(ext)s',
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(f"ytsearch10:{query}", download=False)
+        entries = info.get('entries', [])
+        results = []
+        for entry in entries:
+            if entry:
+                results.append({
+                    'id': entry.get('id'),
+                    'title': entry.get('title')
+                })
+        return results
+
+async def download_audio(video_url: str) -> str:
+    """Скачиваем аудио и возвращаем имя файла с расширением .mp3"""
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'noplaylist': True,
+        'quiet': True,
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+        'outtmpl': '%(title)s.%(ext)s',
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info_dict = ydl.extract_info(video_url, download=True)
+        title = info_dict.get('title', 'audio')
+        filename = sanitize_filename(f"{title}.mp3")
+        return filename
+
+@router.message(Command(commands=['start']))
+async def send_welcome(message: types.Message):
+    await message.reply("👋 Привет! Я бот для скачивания музыки с YouTube 🎵\n"
+                        "\n Просто напиши название песни, и я найду её для тебя 🔍")
+
+@router.message(F.text)
+async def handle_search(message: types.Message):
+    query = message.text.strip()
+    if not query:
+        await message.answer("❗ Пожалуйста, укажи название песни.")
+        return
+
+    await message.answer("🔍 Ищу музыку...")
+
+    tracks = await search_tracks(query)
+    if not tracks:
+        await message.answer("😔 Ничего не найдено по твоему запросу.")
+        return
+
+    buttons = []
+    for i, track in enumerate(tracks):
+        title = track['title']
+        video_id = track['id']
+        buttons.append([InlineKeyboardButton(text=f"🎵 {i+1}. {title[:45]}", callback_data=f"get_{video_id}")])
+
+    markup = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await message.answer("🎧 Выбери трек для скачивания:", reply_markup=markup)
+
+@router.callback_query(F.data.startswith("get_"))
+async def handle_download(callback: CallbackQuery):
+    try:
+        video_id = callback.data[4:]
+        video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+        await callback.answer("⏬ Загружаю аудио, подожди...")
+
+        filename = await download_audio(video_url)
+
+        if not os.path.exists(filename):
+            await callback.message.answer("❌ Ошибка: аудиофайл не был создан.")
+            return
+
+        if os.path.getsize(filename) < 10 * 1024:
+            await callback.message.answer("❌ Ошибка: файл слишком маленький.")
+            os.remove(filename)
+            return
+
+        audio = FSInputFile(filename)
+        await bot.send_audio(callback.from_user.id, audio)
+
+        os.remove(filename)
+
+    except Exception as e:
+        await callback.message.answer(f"⚠️ Произошла ошибка: {e}")
+        await callback.answer("❌ Не удалось скачать", show_alert=True)
+
+dp.include_router(router)
+
+async def main():
+    print("🚀 Бот запущен")
+    await dp.start_polling(bot, skip_updates=True)
+
+if __name__ == "__main__":
+    asyncio.run(main())
