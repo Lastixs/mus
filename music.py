@@ -93,20 +93,24 @@ async def handle_search(message: types.Message):
 
 @router.callback_query(F.data.startswith("get_"))
 async def handle_download(callback: CallbackQuery):
+    video_id = callback.data[4:]
+    video_url = f"https://www.youtube.com/watch?v={video_id}"
+
+    # ✅ Быстрое подтверждение (до 10 секунд)
+    await callback.answer("⏬ Загружаю аудио, подожди...")
+
+    # ⚙️ Сообщаем пользователю, что начали скачивание
+    status_message = await callback.message.answer("🎧 Скачиваю трек... Это может занять до минуты ⏳")
+
     try:
-        video_id = callback.data[4:]
-        video_url = f"https://www.youtube.com/watch?v={video_id}"
-
-        await callback.answer("⏬ Загружаю аудио, подожди...")
-
         filename = await download_audio(video_url)
 
         if not os.path.exists(filename):
-            await callback.message.answer("❌ Ошибка: аудиофайл не был создан.")
+            await status_message.edit_text("❌ Ошибка: аудиофайл не был создан.")
             return
 
         if os.path.getsize(filename) < 10 * 1024:
-            await callback.message.answer("❌ Ошибка: файл слишком маленький.")
+            await status_message.edit_text("❌ Ошибка: файл слишком маленький.")
             os.remove(filename)
             return
 
@@ -114,10 +118,11 @@ async def handle_download(callback: CallbackQuery):
         await bot.send_audio(callback.from_user.id, audio)
 
         os.remove(filename)
+        await status_message.edit_text("✅ Готово! Трек отправлен 🎵")
 
     except Exception as e:
-        await callback.message.answer(f"⚠️ Произошла ошибка: {e}")
-        await callback.answer("❌ Не удалось скачать", show_alert=True)
+        await status_message.edit_text(f"⚠️ Произошла ошибка: {e}")
+
 
 dp.include_router(router)
 
