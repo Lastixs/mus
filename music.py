@@ -39,11 +39,16 @@ async def search_tracks(query: str) -> list:
         return results
 
 async def download_audio(video_url: str) -> str:
-    """Скачиваем аудио и возвращаем имя файла с расширением .mp3"""
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
+        'geo_bypass': True,
+        'http_headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                          'AppleWebKit/537.36 (KHTML, like Gecko) '
+                          'Chrome/125.0.0.0 Safari/537.36'
+        },
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
@@ -51,6 +56,7 @@ async def download_audio(video_url: str) -> str:
         }],
         'outtmpl': '%(title)s.%(ext)s',
     }
+
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info_dict = ydl.extract_info(video_url, download=True)
         title = info_dict.get('title', 'audio')
