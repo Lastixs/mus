@@ -67,7 +67,7 @@ async def download_audio(video_url: str) -> str:
         'retries': 10,  # количество попыток при ошибке сети
         'socket_timeout': 15,  # таймаут соединения
         'nocheckcertificate': True,  # пропустить SSL-проверку
-        'proxy': 'socks5://user:pass@host:port',  # <--- вставь свой прокси сюда
+        'proxy': 'socks5://185.155.233.132:50100',  # <--- вставь свой прокси сюда
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
