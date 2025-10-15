@@ -64,6 +64,7 @@ async def download_audio(video_url: str) -> str:
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
+        'cookiefile': 'cookies.txt'
         'retries': 10,  # количество попыток при ошибке сети
         'socket_timeout': 15,  # таймаут соединения
         'nocheckcertificate': True,  # пропустить SSL-проверку
