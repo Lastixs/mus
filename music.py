@@ -59,25 +59,39 @@ async def search_tracks(query: str) -> list:
 
 
 async def download_audio(video_url: str) -> str:
-    """Скачиваем аудио с YouTube и возвращаем имя mp3-файла"""
-    ydl_opts = YDL_COMMON.copy()
-    ydl_opts.update({
+    """Скачиваем аудио с YouTube и возвращаем имя файла .mp3 с использованием прокси"""
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'noplaylist': True,
+        'quiet': True,
+        'retries': 10,  # количество попыток при ошибке сети
+        'socket_timeout': 15,  # таймаут соединения
+        'nocheckcertificate': True,  # пропустить SSL-проверку
+        'proxy': 'socks5://user:pass@host:port',  # <--- вставь свой прокси сюда
         'postprocessors': [{
             'key': 'FFmpegExtractAudio',
             'preferredcodec': 'mp3',
             'preferredquality': '192',
         }],
         'outtmpl': '%(title)s.%(ext)s',
-    })
+    }
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(video_url, download=True)
-            title = info_dict.get('title', f"audio_{uuid.uuid4().hex[:8]}")
-            filename = sanitize_filename(f"{title}.mp3")
-            return filename
+        # ограничим время выполнения на случай зависания
+        async def run_ydl():
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(video_url, download=True)
+                title = info_dict.get('title', 'audio')
+                filename = sanitize_filename(f"{title}.mp3")
+                return filename
+
+        filename = await asyncio.wait_for(run_ydl(), timeout=120)  # максимум 2 минуты
+        return filename
+
+    except asyncio.TimeoutError:
+        raise Exception("⏱️ Превышено время ожидания загрузки.")
     except Exception as e:
-        raise RuntimeError(f"Ошибка при скачивании: {e}")
+        raise Exception(f"Ошибка при скачивании: {e}")
 
 
 @router.message(Command(commands=['start']))
