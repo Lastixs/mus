@@ -64,7 +64,7 @@ async def download_audio(video_url: str) -> str:
         'format': 'bestaudio/best',
         'noplaylist': True,
         'quiet': True,
-        'cookiefile': 'cookies.txt'
+        'cookiefile': 'cookies.txt',
         'retries': 10,  # количество попыток при ошибке сети
         'socket_timeout': 15,  # таймаут соединения
         'nocheckcertificate': True,  # пропустить SSL-проверку
@@ -75,6 +75,16 @@ async def download_audio(video_url: str) -> str:
             'preferredquality': '192',
         }],
         'outtmpl': '%(title)s.%(ext)s',
+        'http_headers': {
+            'User-Agent': (
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
+                'AppleWebKit/537.36 (KHTML, like Gecko) '
+                'Chrome/125.0.0.0 Safari/537.36'
+            ),
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        },
     }
 
     try:
