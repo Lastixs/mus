@@ -8,7 +8,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, FSInputFil
 import yt_dlp
 
 # ⚠️ ВСТАВЬТЕ СВОЙ API-ТОКЕН
-API_TOKEN = '7778413375:AAHX7zqBmRVh-ihK0tX580JJtNDRuV5UMMo'
+API_TOKEN = '7778413375:AAF0wsQCHFH5aiCaJxLhkjwmJLqCEpGcXnE'
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
